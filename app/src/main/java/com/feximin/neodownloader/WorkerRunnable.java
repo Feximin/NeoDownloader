@@ -6,6 +6,8 @@ import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Neo on 16/3/22.
@@ -16,17 +18,17 @@ public class WorkerRunnable {
         None, Pending, Running, Cancel, Finish, Error
     }
 
-    private DownloadListener mListener;
-
     private Status mCurStatus = Status.None;
     private Peanut mPeanut;
 
     private BufferedInfo mBufferedInfo;
 
     private DownloaderConfig mConfig;
+    private List<DownloadListener> mDownloadListenerList = new ArrayList<>(1);
 
-    public void setDownloadListener(DownloadListener listener){
-        this.mListener = listener;
+    public void addDownloadListener(DownloadListener listener){
+        if (listener == null || mDownloadListenerList.contains(listener)) return;
+        mDownloadListenerList.add(listener);
     }
     public WorkerRunnable(String url, DownloaderConfig config){
         this.mConfig = config;
@@ -34,13 +36,12 @@ public class WorkerRunnable {
         this.mBufferedInfo = config.checker.check(url);
     }
 
-    public void setBufferedInfo(BufferedInfo info){
-        this.mBufferedInfo = info;
-    }
-
     public void cancel(){
+        if (mCurStatus == Status.Cancel) return;
         mCurStatus = Status.Cancel;
-        mListener.onCancel(mPeanut.getUrl());
+        for (DownloadListener listener : mDownloadListenerList) {
+            listener.onCancel(mPeanut.getUrl());
+        }
     }
 
     public Status getCurStatus(){
@@ -50,6 +51,7 @@ public class WorkerRunnable {
     private Runnable mRunnable;
     public Runnable run() {
         if (mRunnable == null){
+            mCurStatus = Status.Pending;
             mRunnable = new BusinessRunnable(mPeanut.getUrl());
         }
         return mRunnable;
@@ -62,24 +64,36 @@ public class WorkerRunnable {
     }
 
     private void onProgress(int percent){
-        mListener.onProgress(mPeanut, percent);
+        for (DownloadListener listener : mDownloadListenerList){
+            listener.onProgress(mPeanut, percent);
+        }
+    }
+
+    private void onError(String errorInfo){
+        mCurStatus = Status.Error;
+        for (DownloadListener listener: mDownloadListenerList){
+            listener.onError(mPeanut.getUrl(), errorInfo);
+        }
+    }
+
+    private void onFinish(){
+        mCurStatus = Status.Finish;
+        for (DownloadListener listener : mDownloadListenerList){
+            listener.onFinish(mPeanut);
+        }
     }
 
     private class BusinessRunnable implements Runnable{
         private String httpUrl;
         public BusinessRunnable(String url){
             this.httpUrl = url;
-            mCurStatus = Status.Pending;
         }
 
         @Override
         public void run() {
-            if (mCurStatus == Status.Cancel){
+            if (mCurStatus == Status.Cancel) return;
 
-            }else {
-                mCurStatus = Status.Running;
-            }
-
+            mCurStatus = Status.Running;
 
             HttpURLConnection connection = null;
             RandomAccessFile randomAccessFile = null;
@@ -91,8 +105,7 @@ public class WorkerRunnable {
                 connection.connect();
                 int latestFileSize = connection.getContentLength();         //获取到最新的文件的长度
                 if (latestFileSize <= 0){
-                    mCurStatus = Status.Error;
-                    mListener.onError(httpUrl, "invalid content length !!");
+                    onError("invalid content length !!");
                     return;
                 }
                 long startPosition = 0;
@@ -107,8 +120,7 @@ public class WorkerRunnable {
                                 mPeanut.setDestFile(path);
                                 startPosition = file.length();
                                 if (startPosition == latestFileSize){           //如果已经下载完了
-                                    mCurStatus = Status.Finish;
-                                    mListener.onFinish(mPeanut);
+                                    onFinish();
                                     return;
                                 }else{
                                     randomAccessFile = new RandomAccessFile(file, "rwd");
@@ -133,7 +145,7 @@ public class WorkerRunnable {
                 connection.connect();
                 is = connection.getInputStream();
                 if (is == null){
-                    mListener.onError(httpUrl, "can not open input stream !!");
+                    onError("can not open input stream !!");
                     return;
                 }
                 byte[] buffer = new byte[4096];
@@ -143,25 +155,22 @@ public class WorkerRunnable {
                 long lastTime = System.currentTimeMillis();
                 onProgress(getPercent((int) completeSize, latestFileSize));
                 while ((length = is.read(buffer)) != -1) {
+                    if (mCurStatus == Status.Cancel) return;
                     randomAccessFile.write(buffer, 0, length);
                     completeSize += length;
-                    if (lastTime - System.currentTimeMillis() > 1000){
+                    if (lastTime - System.currentTimeMillis() > 1000){              //超过1秒后才去通知更新
                         onProgress(getPercent((int) completeSize, latestFileSize));
                         lastTime = System.currentTimeMillis();
                     }
-                    if (mCurStatus == Status.Cancel)return;
                 }
                 if (completeSize == latestFileSize){
-                    mCurStatus = Status.Finish;
-                    mListener.onFinish(mPeanut);
+                    onFinish();
                 }else{
-                    mCurStatus = Status.Error;
-                    mListener.onError(httpUrl, "unknown error");
+                    onError("unknown error");
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                mCurStatus = Status.Error;
-                mListener.onError(httpUrl, "");
+                onError("unknown error");
             } finally {
                 try {
                     if (is != null) is.close();
