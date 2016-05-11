@@ -1,4 +1,4 @@
-package com.feximin.neodownloader;
+package com.feximin.downloadersample;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
@@ -6,6 +6,8 @@ import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.widget.ListView;
+
+import com.feximin.neodownloader.R;
 
 import org.json.JSONException;
 import org.json.JSONObject;

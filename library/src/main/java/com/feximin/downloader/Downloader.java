@@ -1,4 +1,4 @@
-package com.feximin.neodownloader;
+package com.feximin.downloader;
 
 import android.util.Log;
 

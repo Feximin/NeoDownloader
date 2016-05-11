@@ -4,6 +4,7 @@
     <modules>
       <module fileurl="file://$PROJECT_DIR$/NeoDownloader.iml" filepath="$PROJECT_DIR$/NeoDownloader.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/library/downloaderlibrary.iml" filepath="$PROJECT_DIR$/library/downloaderlibrary.iml" />
     </modules>
   </component>
 </project>

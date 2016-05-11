@@ -1,4 +1,4 @@
-package com.feximin.neodownloader;
+package com.feximin.downloader;
 
 import java.io.File;
 import java.io.IOException;

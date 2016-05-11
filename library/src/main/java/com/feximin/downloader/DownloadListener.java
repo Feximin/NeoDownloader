@@ -1,4 +1,4 @@
-package com.feximin.neodownloader;
+package com.feximin.downloader;
 
 /**
  * Created by Neo on 16/3/23.

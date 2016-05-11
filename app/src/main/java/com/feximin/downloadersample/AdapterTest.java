@@ -1,4 +1,4 @@
-package com.feximin.neodownloader;
+package com.feximin.downloadersample;
 
 import android.app.Activity;
 import android.view.LayoutInflater;
@@ -8,6 +8,11 @@ import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+
+import com.feximin.downloader.Downloader;
+import com.feximin.downloader.Peanut;
+import com.feximin.downloader.SimpleDownloadListener;
+import com.feximin.neodownloader.R;
 
 import java.util.ArrayList;
 import java.util.List;
