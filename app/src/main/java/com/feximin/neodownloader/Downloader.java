@@ -2,8 +2,6 @@ package com.feximin.neodownloader;
 
 import android.util.Log;
 
-import com.mianmian.guild.util.SingletonFactory;
-
 /**
  * Created by Neo on 16/3/22.
  */
@@ -28,8 +26,9 @@ public class Downloader {
         }
     }
 
+    private static final Downloader INSTANCE = new Downloader();
     public static Downloader getInstance(){
-        return SingletonFactory.getInstance(Downloader.class);
+        return INSTANCE;
     }
 
     public void start(String url, DownloadListener listener){

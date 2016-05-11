@@ -42,6 +42,7 @@ public class WorkerRunnable {
         for (DownloadListener listener : mDownloadListenerList) {
             listener.onCancel(mPeanut.getUrl());
         }
+        mDownloadListenerList.clear();
     }
 
     public Status getCurStatus(){
@@ -56,6 +57,8 @@ public class WorkerRunnable {
         }
         return mRunnable;
     }
+
+
 
 
     private int getPercent(int cur, int total){
@@ -74,6 +77,7 @@ public class WorkerRunnable {
         for (DownloadListener listener: mDownloadListenerList){
             listener.onError(mPeanut.getUrl(), errorInfo);
         }
+        mDownloadListenerList.clear();
     }
 
     private void onFinish(){
@@ -81,6 +85,7 @@ public class WorkerRunnable {
         for (DownloadListener listener : mDownloadListenerList){
             listener.onFinish(mPeanut);
         }
+        mDownloadListenerList.clear();
     }
 
     private class BusinessRunnable implements Runnable{
@@ -99,11 +104,7 @@ public class WorkerRunnable {
             RandomAccessFile randomAccessFile = null;
             InputStream is = null;
             try {
-                URL url = new URL(httpUrl);
-                connection = (HttpURLConnection) url.openConnection();
-                connection.setConnectTimeout(5000);
-                connection.connect();
-                int latestFileSize = connection.getContentLength();         //获取到最新的文件的长度
+                int latestFileSize = getHttpContentLength(httpUrl);
                 if (latestFileSize <= 0){
                     onError("invalid content length !!");
                     return;
@@ -139,6 +140,9 @@ public class WorkerRunnable {
                 mBufferedInfo.setHttpUrl(httpUrl);
                 mConfig.checker.buffer(mBufferedInfo);
 
+                URL url = new URL(httpUrl);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setConnectTimeout(5000);
 //                connection.setRequestMethod("GET");
                 // 设置范围，格式为Range：bytes x-y;
                 connection.setRequestProperty("Range", "bytes="+startPosition + "-");
@@ -158,7 +162,7 @@ public class WorkerRunnable {
                     if (mCurStatus == Status.Cancel) return;
                     randomAccessFile.write(buffer, 0, length);
                     completeSize += length;
-                    if (lastTime - System.currentTimeMillis() > 1000){              //超过1秒后才去通知更新
+                    if (System.currentTimeMillis() - lastTime > 1000){              //超过1秒后才去通知更新
                         onProgress(getPercent((int) completeSize, latestFileSize));
                         lastTime = System.currentTimeMillis();
                     }
@@ -193,7 +197,21 @@ public class WorkerRunnable {
             return httpUrl != null ? httpUrl.equals(that.httpUrl) : that.httpUrl == null;
 
         }
-
+        public int getHttpContentLength(String httpUrl){
+            HttpURLConnection connection = null;
+            try{
+                URL url = new URL(httpUrl);
+                connection = (HttpURLConnection) url.openConnection();
+                connection.setConnectTimeout(5000);
+                connection.connect();
+                int latestFileSize = connection.getContentLength();         //获取到最新的文件的长度
+                return latestFileSize;
+            }catch (Exception e){
+                return 0;
+            }finally {
+                if (connection != null) connection.disconnect();
+            }
+        }
         @Override
         public int hashCode() {
             return httpUrl != null ? httpUrl.hashCode() : 0;

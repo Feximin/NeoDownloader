@@ -1,6 +1,6 @@
 package com.feximin.neodownloader;
 
-import com.mianmian.guild.util.Tool;
+import android.text.TextUtils;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -22,14 +22,14 @@ public class Engine {
         this.mConfig = config;
         this.mWorkerRunnableMap = new HashMap<>();
         this.mQueue = new ArrayBlockingQueue<>(mConfig.maxQueueCount);
-        this.mExecutor = new ThreadPoolExecutor(1, mConfig.maxThread, 30, TimeUnit.SECONDS, mQueue);
+        this.mExecutor = new ThreadPoolExecutor(mConfig.maxThread, mConfig.maxThread, 30, TimeUnit.SECONDS, mQueue);
     }
 
     //如果不存在就添加，如果已经存在就只添加listener
     public void start(String url, DownloadListener listener){
         clear();
         if (listener == null) listener = mDefaultListener;
-        if (Tool.isEmpty(url)) {
+        if (TextUtils.isEmpty(url)) {
             listener.onError(url, "url is empty");
         }else {
             WorkerRunnable workerRunnable = mWorkerRunnableMap.get(url);
@@ -69,7 +69,7 @@ public class Engine {
 
     public void cancel(String url){
         clear();
-        if (Tool.isEmpty(url)) return;
+        if (TextUtils.isEmpty(url)) return;
         WorkerRunnable workerRunnable = mWorkerRunnableMap.get(url);
         if (workerRunnable == null) return;
         workerRunnable.cancel();
