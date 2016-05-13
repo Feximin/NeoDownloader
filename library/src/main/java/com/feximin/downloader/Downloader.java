@@ -36,22 +36,10 @@ public class Downloader {
         mEngine.start(url, listener);
     }
 
-    public void start(Peanut peanut, DownloadListener listener){
-        if (peanut == null) return;
-        start(peanut.getUrl(), listener);
-    }
-
     public void pause(String url){
         mEngine.pause(url);
     }
 
-    public void pause(Peanut peanut){
-        pause(peanut.getUrl());
-    }
-
-    public void resumeFromPause(String url){
-
-    }
 
     public void delete(String url, boolean deleteFile){
         mEngine.delete(url, deleteFile);
@@ -61,9 +49,5 @@ public class Downloader {
         return mEngine.getStatus(url);
     }
 
-    public Pair<WorkerRunnable.Status, Integer> getStatus(Peanut peanut){
-        if (peanut == null) return null;
-        return getStatus(peanut.getUrl());
-    }
 
 }

@@ -69,6 +69,7 @@ public class AdapterTest extends BaseAdapter {
         final TextView txtTitle = (TextView) convertView.findViewById(R.id.txt_title);
         final Button butDown = (Button) convertView.findViewById(R.id.but_download);
         final ProgressBar progressBar = (ProgressBar) convertView.findViewById(R.id.progress_bar);
+        final String httpUrl = entity.getUrl();
         txtTitle.setText(entity.getUrl());
         Pair<WorkerRunnable.Status, Integer> pair = Downloader.getInstance().getStatus(entity.getUrl());
         WorkerRunnable.Status status = null;
@@ -99,35 +100,35 @@ public class AdapterTest extends BaseAdapter {
                         || finalStatus == WorkerRunnable.Status.None
                         || finalStatus == WorkerRunnable.Status.Error
                         || finalStatus == WorkerRunnable.Status.Pause){
-                    Downloader.getInstance().start(entity, new DownloadListener(){
+                    Downloader.getInstance().start(httpUrl, new DownloadListener(){
                         @Override
-                        public void onStart(Peanut peanut) {
+                        public void onStart(String peanut) {
                             notifyOnUiThread();
                         }
 
                         @Override
-                        public void onProgress(Peanut peanut, final int percent) {
+                        public void onProgress(String peanut, final int percent) {
                             notifyOnUiThread();
                         }
 
                         @Override
-                        public void onPause(Peanut peanut) {
+                        public void onPause(String peanut) {
                             notifyOnUiThread();
                         }
 
                         @Override
-                        public void onError(Peanut url, String error) {
+                        public void onError(String url, String error) {
                             notifyOnUiThread();
                         }
 
                         @Override
-                        public void onPending(Peanut peanut) {
+                        public void onPending(String peanut) {
                             notifyOnUiThread();
                         }
                     });
                 }else if (finalStatus == WorkerRunnable.Status.Pending
                         || finalStatus == WorkerRunnable.Status.Running){
-                    Downloader.getInstance().pause(entity);
+                    Downloader.getInstance().pause(httpUrl);
                 }else if (finalStatus == WorkerRunnable.Status.Finish){
 
 

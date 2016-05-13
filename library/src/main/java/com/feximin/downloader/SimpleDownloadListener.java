@@ -5,28 +5,28 @@ package com.feximin.downloader;
  */
 public class SimpleDownloadListener implements DownloadListener {
     @Override
-    public void onStart(Peanut peanut) {
+    public void onStart(String peanut) {
 
     }
 
     @Override
-    public void onProgress(Peanut peanut, int percent) {
+    public void onProgress(String peanut, int percent) {
 
     }
 
     @Override
-    public void onPause(Peanut peanut) {
+    public void onPause(String peanut) {
 
     }
 
     @Override
-    public void onError(Peanut url, String error) {
+    public void onError(String url, String error) {
 
     }
 
 
     @Override
-    public void onPending(Peanut peanut) {
+    public void onPending(String peanut) {
 
     }
 }

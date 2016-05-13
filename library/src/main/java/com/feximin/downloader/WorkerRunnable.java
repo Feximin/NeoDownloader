@@ -21,6 +21,7 @@ public class WorkerRunnable {
     private Status mCurStatus = Status.None;
     private Peanut mPeanut;
 
+    private String mHttpUrl;
     private BufferedInfo mBufferedInfo;
 
     private DownloaderConfig mConfig;
@@ -29,6 +30,7 @@ public class WorkerRunnable {
     private int mCurProgress;                //当前下载进度的百分比
 
     public WorkerRunnable(String url, DownloaderConfig config){
+        this.mHttpUrl = url;
         this.mConfig = config;
         this.mPeanut = config.producer.produce(url);
         this.mBufferedInfo = config.checker.check(url);
@@ -47,7 +49,7 @@ public class WorkerRunnable {
         if (mCurStatus == Status.Pause) return;
         mCurStatus = Status.Pause;
         for (DownloadListener listener : mDownloadListenerList) {
-            listener.onPause(mPeanut);
+            listener.onPause(mHttpUrl);
         }
     }
 
@@ -62,20 +64,14 @@ public class WorkerRunnable {
     private Runnable mRunnable;
     public Runnable run() {
         if (mRunnable == null){
-            mRunnable = new BusinessRunnable(mPeanut.getUrl());
-            onPending();
+            this.mCurStatus = Status.Pending;
+            mRunnable = new BusinessRunnable();
+            for (DownloadListener listener : mDownloadListenerList) {
+                listener.onPending(mHttpUrl);
+            }
         }
         return mRunnable;
     }
-
-
-    private void onPending(){
-        this.mCurStatus = Status.Pending;
-        for (DownloadListener listener : mDownloadListenerList) {
-            listener.onPending(mPeanut);
-        }
-    }
-
 
     private void onProgress(int cur, int total){
         int percent = (int) (cur / (float)total * 100);
@@ -87,7 +83,7 @@ public class WorkerRunnable {
             mCurProgress = percent;
             if (mCurProgress == 100) mCurStatus = Status.Finish;
             for (DownloadListener listener : mDownloadListenerList) {
-                listener.onProgress(mPeanut, mCurProgress);
+                listener.onProgress(mHttpUrl, mCurProgress);
             }
             if (mCurProgress == 100){
                 mDownloadListenerList.clear();
@@ -102,7 +98,7 @@ public class WorkerRunnable {
     private void onError(String errorInfo){
         mCurStatus = Status.Error;
         for (DownloadListener listener: mDownloadListenerList){
-            listener.onError(mPeanut, errorInfo);
+            listener.onError(mHttpUrl, errorInfo);
         }
         mDownloadListenerList.clear();
     }
@@ -110,15 +106,11 @@ public class WorkerRunnable {
     private void onStart(){
         mCurStatus = Status.Running;
         for (DownloadListener listener : mDownloadListenerList){
-            listener.onStart(mPeanut);
+            listener.onStart(mHttpUrl);
         }
     }
 
     private class BusinessRunnable implements Runnable{
-        private String httpUrl;
-        public BusinessRunnable(String url){
-            this.httpUrl = url;
-        }
 
         @Override
         public void run() {
@@ -130,7 +122,7 @@ public class WorkerRunnable {
             RandomAccessFile randomAccessFile = null;
             InputStream is = null;
             try {
-                URL url = new URL(httpUrl);
+                URL url = new URL(mHttpUrl);
                 connection = (HttpURLConnection) url.openConnection();
                 connection.setConnectTimeout(5000);
                 int latestFileSize = connection.getContentLength();         //获取到最新的文件的长度
@@ -174,7 +166,7 @@ public class WorkerRunnable {
                 if (mBufferedInfo == null) mBufferedInfo = new BufferedInfo();
                 mBufferedInfo.setTotalSize(latestFileSize);
                 mBufferedInfo.setLocalFilePath(mPeanut.getDestFile());
-                mBufferedInfo.setHttpUrl(httpUrl);
+                mBufferedInfo.setHttpUrl(mHttpUrl);
                 mConfig.checker.buffer(mBufferedInfo);
 
                 is = connection.getInputStream();
@@ -234,20 +226,6 @@ public class WorkerRunnable {
 //            }
 //        }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            BusinessRunnable that = (BusinessRunnable) o;
-
-            return httpUrl != null ? httpUrl.equals(that.httpUrl) : that.httpUrl == null;
-
-        }
-        @Override
-        public int hashCode() {
-            return httpUrl != null ? httpUrl.hashCode() : 0;
-        }
     }
 
 }

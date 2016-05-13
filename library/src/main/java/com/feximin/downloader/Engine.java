@@ -36,7 +36,7 @@ public class Engine {
     public void start(String url, DownloadListener listener){
         if (listener == null) listener = mDefaultListener;
         if (TextUtils.isEmpty(url)) {
-            listener.onError(null, "url is empty");
+            listener.onError(url, "url is empty");
         }else {
             WorkerRunnable workerRunnable = mWorkerRunnableMap.get(url);
             if (workerRunnable != null){
@@ -56,10 +56,10 @@ public class Engine {
                 try {
                     mExecutor.execute(workerRunnable.run());
                 }catch (QueueFullException e){
-                    listener.onError(workerRunnable.getPeanut(), "the queue is full");
+                    listener.onError(url, "the queue is full");
                 }
             } else {                             //表示队列已满
-                listener.onError(new Peanut(url), "the queue is full");
+                listener.onError(url, "the queue is full");
             }
         }
     }
