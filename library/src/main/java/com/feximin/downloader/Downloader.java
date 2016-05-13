@@ -49,6 +49,14 @@ public class Downloader {
         pause(peanut.getUrl());
     }
 
+    public void resumeFromPause(String url){
+
+    }
+
+    public void delete(String url, boolean deleteFile){
+        mEngine.delete(url, deleteFile);
+    }
+
     public Pair<WorkerRunnable.Status, Integer> getStatus(String url){
         return mEngine.getStatus(url);
     }

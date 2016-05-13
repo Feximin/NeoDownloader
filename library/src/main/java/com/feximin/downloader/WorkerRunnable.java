@@ -35,7 +35,8 @@ public class WorkerRunnable {
     }
 
     public void addDownloadListener(DownloadListener listener){
-        if (listener == null || mDownloadListenerList.contains(listener)) return;
+        if (listener == null) return;
+        removeDownloadListener(listener);
         mDownloadListenerList.add(listener);
     }
 
@@ -46,7 +47,7 @@ public class WorkerRunnable {
         if (mCurStatus == Status.Pause) return;
         mCurStatus = Status.Pause;
         for (DownloadListener listener : mDownloadListenerList) {
-            listener.onPause(mPeanut.getUrl());
+            listener.onPause(mPeanut);
         }
     }
 
@@ -61,24 +62,36 @@ public class WorkerRunnable {
     private Runnable mRunnable;
     public Runnable run() {
         if (mRunnable == null){
-            mCurStatus = Status.Pending;
             mRunnable = new BusinessRunnable(mPeanut.getUrl());
+            onPending();
         }
         return mRunnable;
     }
 
 
-
-
-    private int getPercent(int cur, int total){
-        int percent = (int) (cur / (float)total * 100);
-        return percent;
+    private void onPending(){
+        this.mCurStatus = Status.Pending;
+        for (DownloadListener listener : mDownloadListenerList) {
+            listener.onPending(mPeanut);
+        }
     }
 
-    private void onProgress(int percent){
-        mCurProgress = percent;
-        for (DownloadListener listener : mDownloadListenerList){
-            listener.onProgress(mPeanut, percent);
+
+    private void onProgress(int cur, int total){
+        int percent = (int) (cur / (float)total * 100);
+        onProgress(percent);
+    }
+
+    private void  onProgress(int percent){
+        if (mCurProgress != percent) {
+            mCurProgress = percent;
+            if (mCurProgress == 100) mCurStatus = Status.Finish;
+            for (DownloadListener listener : mDownloadListenerList) {
+                listener.onProgress(mPeanut, mCurProgress);
+            }
+            if (mCurProgress == 100){
+                mDownloadListenerList.clear();
+            }
         }
     }
 
@@ -89,15 +102,7 @@ public class WorkerRunnable {
     private void onError(String errorInfo){
         mCurStatus = Status.Error;
         for (DownloadListener listener: mDownloadListenerList){
-            listener.onError(mPeanut.getUrl(), errorInfo);
-        }
-        mDownloadListenerList.clear();
-    }
-
-    private void onFinish(){
-        mCurStatus = Status.Finish;
-        for (DownloadListener listener : mDownloadListenerList){
-            listener.onFinish(mPeanut);
+            listener.onError(mPeanut, errorInfo);
         }
         mDownloadListenerList.clear();
     }
@@ -133,6 +138,7 @@ public class WorkerRunnable {
                     onError("invalid content length !!");
                     return;
                 }
+                if (mCurStatus != Status.Running) return;
                 long startPosition = 0;
                 if (mConfig.breakPointEnabled){           //如果允许断点续传
                     if (mBufferedInfo != null){     //并且之前已经下载过了（包含下载完成、未完成）
@@ -145,9 +151,9 @@ public class WorkerRunnable {
                                 mPeanut.setDestFile(path);
                                 startPosition = file.length();
                                 if (startPosition == latestFileSize){           //如果已经下载完了
-                                    onFinish();
+                                    onProgress(100);
                                     return;
-                                }else if (startPosition < latestFileSize){      //
+                                }else if (startPosition > 0 && startPosition < latestFileSize){      //
                                     randomAccessFile = new RandomAccessFile(file, "rwd");
                                     randomAccessFile.seek(startPosition);
                                 }
@@ -181,18 +187,18 @@ public class WorkerRunnable {
                 int length;
                 long completeSize = startPosition;
                 long lastTime = System.currentTimeMillis();
-                onProgress(getPercent((int) completeSize, latestFileSize));
+                onProgress((int) completeSize, latestFileSize);
                 while ((length = is.read(buffer)) != -1) {
                     if (mCurStatus == Status.Pause) return;
                     randomAccessFile.write(buffer, 0, length);
                     completeSize += length;
                     if (System.currentTimeMillis() - lastTime > 1000){              //超过1秒后才去通知更新
-                        onProgress(getPercent((int) completeSize, latestFileSize));
+                        onProgress((int) completeSize, latestFileSize);
                         lastTime = System.currentTimeMillis();
                     }
                 }
                 if (completeSize == latestFileSize){
-                    onFinish();
+                    onProgress(100);
                 }else{
                     onError("unknown error");
                 }

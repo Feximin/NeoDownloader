@@ -15,17 +15,18 @@ public class SimpleDownloadListener implements DownloadListener {
     }
 
     @Override
-    public void onPause(String peanut) {
+    public void onPause(Peanut peanut) {
 
     }
 
     @Override
-    public void onError(String url, String error) {
+    public void onError(Peanut url, String error) {
 
     }
 
+
     @Override
-    public void onFinish(Peanut peanut) {
+    public void onPending(Peanut peanut) {
 
     }
 }

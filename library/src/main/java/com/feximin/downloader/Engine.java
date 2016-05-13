@@ -20,12 +20,6 @@ public class Engine {
     private ArrayBlockingQueue<Runnable> mQueue;
     private Map<String, WorkerRunnable> mWorkerRunnableMap;
 
-//    public static final int ADD_SUCCESS = 0;        //添加任务成功
-//    public static final int DOWNLOAD_ING = 1;       //正在下载
-//    public static final int PAUSE_DOWNLOAD = 2;     //暂停之后又点击了下载
-//    public static final int QUEUE_FULL = 3;         //队列中已经满了
-//    public static final int UNKNOWN_ERROR = 4;              //未知错误
-
     private QueueFullHandler mHandler;                  //任务队列如果已经满了，则抛出异常
 
     private DownloadListener mDefaultListener = new SimpleDownloadListener();
@@ -42,7 +36,7 @@ public class Engine {
     public void start(String url, DownloadListener listener){
         if (listener == null) listener = mDefaultListener;
         if (TextUtils.isEmpty(url)) {
-            listener.onError(url, "url is empty");
+            listener.onError(null, "url is empty");
         }else {
             WorkerRunnable workerRunnable = mWorkerRunnableMap.get(url);
             if (workerRunnable != null){
@@ -62,10 +56,10 @@ public class Engine {
                 try {
                     mExecutor.execute(workerRunnable.run());
                 }catch (QueueFullException e){
-                    listener.onError(url, "the queue is full");
+                    listener.onError(workerRunnable.getPeanut(), "the queue is full");
                 }
             } else {                             //表示队列已满
-                listener.onError(url, "the queue is full");
+                listener.onError(new Peanut(url), "the queue is full");
             }
         }
     }
@@ -91,15 +85,6 @@ public class Engine {
         if (workerRunnable == null) return;
         workerRunnable.pause();
         mExecutor.remove(workerRunnable.run());
-    }
-
-
-    public void switchStartPause(String url){
-
-    }
-
-    public void delete(String url){
-        delete(url, false);
     }
 
 
