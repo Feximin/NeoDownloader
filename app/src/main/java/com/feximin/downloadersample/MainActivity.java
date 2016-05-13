@@ -7,6 +7,12 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.widget.ListView;
 
+import com.feximin.downloader.BufferedInfo;
+import com.feximin.downloader.Downloader;
+import com.feximin.downloader.DownloaderConfig;
+import com.feximin.downloader.IChecker;
+import com.feximin.downloader.IProducer;
+import com.feximin.downloader.Peanut;
 import com.feximin.neodownloader.R;
 
 import org.json.JSONException;
@@ -24,7 +30,6 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         final SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        Downloader downloader = Downloader.getInstance();
         DownloaderConfig config = new DownloaderConfig.Builder()
                 .breakPoint(true)
                 .bufferChecker(new IChecker() {
@@ -59,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
                         sharedPreferences.edit().putString(md5, object.toString()).commit();
                     }
                 })
-                .maxQueueCount(1024)
+                .maxQueueCount(16)
                 .maxThread(4)
                 .producer(new IProducer() {
                     @Override
@@ -71,7 +76,7 @@ public class MainActivity extends AppCompatActivity {
                     }
                 })
                 .build();
-        downloader.init(config);
+        Downloader.init(config);
         this.mListView = (ListView) findViewById(R.id.list_view);
         this.mListView.setAdapter(new AdapterTest(this));
     }

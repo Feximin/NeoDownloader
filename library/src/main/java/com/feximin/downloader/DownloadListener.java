@@ -6,7 +6,7 @@ package com.feximin.downloader;
 public interface DownloadListener {
     void onStart(Peanut peanut);
     void onProgress(Peanut peanut, int percent);
-    void onCancel(String peanut);
+    void onPause(String peanut);
     void onError(String url, String error);
     void onFinish(Peanut peanut);
 }

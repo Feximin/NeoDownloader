@@ -1,33 +1,34 @@
 package com.feximin.downloader;
 
-import android.util.Log;
+import android.util.Pair;
 
 /**
  * Created by Neo on 16/3/22.
  */
 public class Downloader {
 
-    private final String TAG = "Downloader";
-    private DownloaderConfig mConfig;
     private Engine mEngine;
     private Downloader(){
     }
 
-    public void init(DownloaderConfig config){
-        if (mConfig == null){
+    public static void init(DownloaderConfig config){
+        if (config == null){
+            throw  new DownloaderException("config can not be null !!");
+        }else {
             synchronized (Downloader.class){
-                if (mConfig == null){
-                    this.mConfig = config;
-                    this.mEngine = new Engine(mConfig);
+                if (INSTANCE == null){
+                    INSTANCE = new Downloader();
+                    INSTANCE.mEngine = new Engine(config);
                 }
             }
-        }else {
-            Log.d(TAG, "config already init !!");
         }
     }
 
-    private static final Downloader INSTANCE = new Downloader();
+    private static Downloader INSTANCE;
     public static Downloader getInstance(){
+        if (INSTANCE == null){
+            throw new DownloaderException("please call init before getInstance !!");
+        }
         return INSTANCE;
     }
 
@@ -35,8 +36,26 @@ public class Downloader {
         mEngine.start(url, listener);
     }
 
-    public void cancel(String url){
-        mEngine.cancel(url);
+    public void start(Peanut peanut, DownloadListener listener){
+        if (peanut == null) return;
+        start(peanut.getUrl(), listener);
+    }
+
+    public void pause(String url){
+        mEngine.pause(url);
+    }
+
+    public void pause(Peanut peanut){
+        pause(peanut.getUrl());
+    }
+
+    public Pair<WorkerRunnable.Status, Integer> getStatus(String url){
+        return mEngine.getStatus(url);
+    }
+
+    public Pair<WorkerRunnable.Status, Integer> getStatus(Peanut peanut){
+        if (peanut == null) return null;
+        return getStatus(peanut.getUrl());
     }
 
 }

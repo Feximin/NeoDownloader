@@ -1,6 +1,7 @@
 package com.feximin.downloadersample;
 
 import android.app.Activity;
+import android.util.Pair;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,9 +10,10 @@ import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import com.feximin.downloader.DownloadListener;
 import com.feximin.downloader.Downloader;
 import com.feximin.downloader.Peanut;
-import com.feximin.downloader.SimpleDownloadListener;
+import com.feximin.downloader.WorkerRunnable;
 import com.feximin.neodownloader.R;
 
 import java.util.ArrayList;
@@ -73,32 +75,71 @@ public class AdapterTest extends BaseAdapter {
         final Button butDown = (Button) convertView.findViewById(R.id.but_download);
         final ProgressBar progressBar = (ProgressBar) convertView.findViewById(R.id.progress_bar);
         txtTitle.setText(entity.getUrl());
-        butDown.setText(entity.getCurPencent() > 0?"取消":"下载");
+        Pair<WorkerRunnable.Status, Integer> pair = Downloader.getInstance().getStatus(entity.getUrl());
+        WorkerRunnable.Status status = null;
+        if (pair != null) status = pair.first;
+        if (status == null || status == WorkerRunnable.Status.None){
+            butDown.setText("下载");
+        }else if (status == WorkerRunnable.Status.Pending){
+            butDown.setText("等待中");
+        }else if (status == WorkerRunnable.Status.Running){
+            butDown.setText("下载中");
+            int progress = pair.second;
+            progressBar.setProgress(progress);
+        }else if (status == WorkerRunnable.Status.Finish){
+            butDown.setText("安装");
+        }else if (status == WorkerRunnable.Status.Error){
+            butDown.setText("重试");
+        }
+        final WorkerRunnable.Status finalStatus = status;
         butDown.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (!entity.isDownloading){
-                    butDown.setText("取消");
-                    Downloader.getInstance().start(entity.url, new SimpleDownloadListener(){
+                if (finalStatus == null || finalStatus == WorkerRunnable.Status.None || finalStatus == WorkerRunnable.Status.Error){
+                    Downloader.getInstance().start(entity, new DownloadListener(){
+                        @Override
+                        public void onStart(Peanut peanut) {
+                            notifyOnUiThread();
+                        }
+
                         @Override
                         public void onProgress(Peanut peanut, final int percent) {
-                            entity.isDownloading = true;
-                            mActivity.runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    progressBar.setProgress(percent);
-                                }
-                            });
+                            notifyOnUiThread();
+                        }
+
+                        @Override
+                        public void onPause(String peanut) {
+                            notifyOnUiThread();
+                        }
+
+                        @Override
+                        public void onError(String url, String error) {
+                            notifyOnUiThread();
+                        }
+
+                        @Override
+                        public void onFinish(Peanut peanut) {
+                            notifyOnUiThread();
                         }
                     });
-                }else{
-                    butDown.setText("下载");
-                    Downloader.getInstance().cancel(entity.url);
-                    entity.isDownloading = false;
+                }else if (finalStatus == WorkerRunnable.Status.Pending || finalStatus == WorkerRunnable.Status.Running){
+                    Downloader.getInstance().pause(entity);
+                }else if (finalStatus == WorkerRunnable.Status.Finish){
+
+
                 }
             }
         });
         return convertView;
+    }
+
+    private void notifyOnUiThread(){
+        mActivity.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                notifyDataSetChanged();
+            }
+        });
     }
 
     private static class DownloadEntity{

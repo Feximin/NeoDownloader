@@ -5,7 +5,7 @@ package com.feximin.downloader;
  */
 public class Peanut {
 
-    private String url;
+    public String url;
     private int totalSize;
     private int curPercent;
     private String destFile;        //

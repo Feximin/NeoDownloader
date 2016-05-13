@@ -15,7 +15,7 @@ public class SimpleDownloadListener implements DownloadListener {
     }
 
     @Override
-    public void onCancel(String peanut) {
+    public void onPause(String peanut) {
 
     }
 

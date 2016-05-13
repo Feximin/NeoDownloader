@@ -13,12 +13,11 @@ public class DownloaderConfig {
     int maxQueueCount;              //队列中最大正在等待的数量
 
 
-
     public static class Builder{
         IChecker checker;
         boolean breakPointEnabled = true;
         int maxThread = Runtime.getRuntime().availableProcessors();
-        int maxQueueCount = 10;
+        int maxQueueCount = 16;
         IProducer producer;
         public Builder bufferChecker(IChecker checker){
             this.checker = checker;
@@ -52,6 +51,12 @@ public class DownloaderConfig {
             config.maxThread = this.maxThread;
             config.maxQueueCount = this.maxQueueCount;
             config.producer = this.producer;
+            if (maxThread < 1){
+                throw new DownloaderException("maxThread must more than 1 !!");
+            }
+            if (maxQueueCount <= maxThread){
+                throw new DownloaderException("maxQueueCount must big than maxThread !!");
+            }
             return config;
         }
     }
