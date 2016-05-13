@@ -146,13 +146,4 @@ public class AdapterTest extends BaseAdapter {
             }
         });
     }
-
-    private static class DownloadEntity{
-        String url;
-        boolean isDownloading;
-
-        public DownloadEntity(String url) {
-            this.url = url;
-        }
-    }
 }

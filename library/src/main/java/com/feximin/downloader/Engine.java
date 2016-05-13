@@ -5,7 +5,6 @@ import android.util.Pair;
 
 import java.io.File;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -50,7 +49,11 @@ public class Engine {
             }
             mWorkerRunnableMap.remove(url);
             if (mQueue.size() < mConfig.maxQueueCount) {
-                workerRunnable = new WorkerRunnable(url, mConfig);
+                if (workerRunnable == null) {
+                    workerRunnable = new WorkerRunnable(url, mConfig);
+                }else{
+                    workerRunnable = workerRunnable.transform();
+                }
                 workerRunnable.addDownloadListener(listener);
                 mWorkerRunnableMap.put(url, workerRunnable);
                 try {
@@ -64,20 +67,6 @@ public class Engine {
         }
     }
 
-
-    //把已经
-    private void clear(){
-        Iterator<Map.Entry<String , WorkerRunnable>> iterator = mWorkerRunnableMap.entrySet().iterator();
-        while (iterator.hasNext()){
-            WorkerRunnable runnable = iterator.next().getValue();
-            boolean flag = true;
-            if (runnable != null){
-                WorkerRunnable.Status status = runnable.getCurStatus();
-                flag = status != WorkerRunnable.Status.Pending && status != WorkerRunnable.Status.Running;
-            }
-            if (flag) iterator.remove();
-        }
-    }
 
     public void pause(String url){
         if (TextUtils.isEmpty(url)) return;

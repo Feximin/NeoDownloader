@@ -36,6 +36,14 @@ public class WorkerRunnable {
         this.mBufferedInfo = config.checker.check(url);
     }
 
+    public WorkerRunnable transform(){
+        WorkerRunnable runnable = new WorkerRunnable(mHttpUrl, mConfig);
+        for (DownloadListener listener : mDownloadListenerList){
+            runnable.addDownloadListener(listener);
+        }
+        return runnable;
+    }
+
     public void addDownloadListener(DownloadListener listener){
         if (listener == null) return;
         removeDownloadListener(listener);
@@ -123,7 +131,7 @@ public class WorkerRunnable {
             InputStream is = null;
             try {
                 URL url = new URL(mHttpUrl);
-                connection = (HttpURLConnection) url.openConnection();
+                connection = (HttpURLConnection) url.openConnection();      //getContentLength是一个比较费时的操作n();
                 connection.setConnectTimeout(5000);
                 int latestFileSize = connection.getContentLength();         //获取到最新的文件的长度
                 if (latestFileSize <= 0){
@@ -180,8 +188,10 @@ public class WorkerRunnable {
                 long completeSize = startPosition;
                 long lastTime = System.currentTimeMillis();
                 onProgress((int) completeSize, latestFileSize);
-                while ((length = is.read(buffer)) != -1) {
-                    if (mCurStatus == Status.Pause) return;
+                for (;;) {
+                    if (mCurStatus != Status.Running) return;               //如果没有getContentLength的话 read是一个比较费时的操作ze);
+                    length = is.read(buffer);
+                    if (length < 0) break;
                     randomAccessFile.write(buffer, 0, length);
                     completeSize += length;
                     if (System.currentTimeMillis() - lastTime > 1000){              //超过1秒后才去通知更新
