@@ -7,10 +7,10 @@ import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
 import android.widget.ListView;
 
-import com.feximin.downloader.BufferedInfo;
+import com.feximin.downloader.CacheInfo;
 import com.feximin.downloader.Downloader;
 import com.feximin.downloader.DownloaderConfig;
-import com.feximin.downloader.IChecker;
+import com.feximin.downloader.ICache;
 import com.feximin.downloader.IProducer;
 import com.feximin.downloader.Peanut;
 import com.feximin.neodownloader.R;
@@ -32,16 +32,16 @@ public class MainActivity extends AppCompatActivity {
         final SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
         DownloaderConfig config = new DownloaderConfig.Builder()
                 .breakPoint(true)
-                .bufferChecker(new IChecker() {
+                .cache(new ICache() {
                     @Override
-                    public BufferedInfo check(String url) {
+                    public CacheInfo checkOut(String url) {
                         String md5 = url;
                         String json = sharedPreferences.getString(md5, null);
                         if (!TextUtils.isEmpty(json)){
                             JSONObject object = null;
                             try {
                                 object = new JSONObject(json);
-                                BufferedInfo info = new BufferedInfo();
+                                CacheInfo info = new CacheInfo();
                                 info.setHttpUrl(url);
                                 info.setLocalFilePath(object.optString("local_file_path"));
                                 info.setTotalSize(object.optInt("total_size"));
@@ -54,7 +54,7 @@ public class MainActivity extends AppCompatActivity {
                     }
 
                     @Override
-                    public void buffer(BufferedInfo info) {
+                    public void cache(CacheInfo info) {
                         Map<String, Object> map = new HashMap<>();
                         map.put("local_file_path", info.getLocalFilePath());
                         map.put("total_size", info.getTotalSize());

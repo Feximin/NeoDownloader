@@ -15,14 +15,14 @@ import java.util.List;
 public class WorkerRunnable {
 
     public static enum Status{
-        None, Pending, Running, Pause, Finish, Error
+        Pending, Running, Pause, Finish, Error
     }
 
-    private Status mCurStatus = Status.None;
+    private Status mCurStatus;
     private Peanut mPeanut;
 
     private String mHttpUrl;
-    private BufferedInfo mBufferedInfo;
+    private CacheInfo mCacheInfo;
 
     private DownloaderConfig mConfig;
     private List<DownloadListener> mDownloadListenerList = new ArrayList<>(1);
@@ -33,7 +33,7 @@ public class WorkerRunnable {
         this.mHttpUrl = url;
         this.mConfig = config;
         this.mPeanut = config.producer.produce(url);
-        this.mBufferedInfo = config.checker.check(url);
+        this.mCacheInfo = config.checker.checkOut(url);
     }
 
     public WorkerRunnable transform(){
@@ -141,11 +141,11 @@ public class WorkerRunnable {
                 if (mCurStatus != Status.Running) return;
                 long startPosition = 0;
                 if (mConfig.breakPointEnabled){           //如果允许断点续传
-                    if (mBufferedInfo != null){     //并且之前已经下载过了（包含下载完成、未完成）
-                        int previousTotalSize = mBufferedInfo.getTotalSize();
+                    if (mCacheInfo != null){     //并且之前已经下载过了（包含下载完成、未完成）
+                        int previousTotalSize = mCacheInfo.getTotalSize();
                         //这里只是简单的通过比较两个文件的大小是否相等，来判断是否是同一文件
                         if (latestFileSize == previousTotalSize){
-                            String path = mBufferedInfo.getLocalFilePath();
+                            String path = mCacheInfo.getLocalFilePath();
                             File file = new File(path);
                             if (file.exists()) {
                                 mPeanut.setDestFile(path);
@@ -171,11 +171,11 @@ public class WorkerRunnable {
                     connection.setConnectTimeout(5000);
                     connection.setRequestProperty("Range", "bytes="+startPosition + "-");
                 }
-                if (mBufferedInfo == null) mBufferedInfo = new BufferedInfo();
-                mBufferedInfo.setTotalSize(latestFileSize);
-                mBufferedInfo.setLocalFilePath(mPeanut.getDestFile());
-                mBufferedInfo.setHttpUrl(mHttpUrl);
-                mConfig.checker.buffer(mBufferedInfo);
+                if (mCacheInfo == null) mCacheInfo = new CacheInfo();
+                mCacheInfo.setTotalSize(latestFileSize);
+                mCacheInfo.setLocalFilePath(mPeanut.getDestFile());
+                mCacheInfo.setHttpUrl(mHttpUrl);
+                mConfig.checker.cache(mCacheInfo);
 
                 is = connection.getInputStream();
                 if (is == null){

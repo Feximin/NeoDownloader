@@ -6,7 +6,7 @@ package com.feximin.downloader;
 public class DownloaderConfig {
 
     private DownloaderConfig(){}
-    IChecker checker;
+    ICache checker;
     IProducer producer;
     boolean breakPointEnabled;      //是否支持断点续传
     int maxThread;                  //最多同时执行的数量线程数
@@ -14,12 +14,12 @@ public class DownloaderConfig {
 
 
     public static class Builder{
-        IChecker checker;
+        ICache checker;
         boolean breakPointEnabled = true;
         int maxThread = Runtime.getRuntime().availableProcessors();
         int maxQueueCount = 16;
         IProducer producer;
-        public Builder bufferChecker(IChecker checker){
+        public Builder cache(ICache checker){
             this.checker = checker;
             return this;
         }

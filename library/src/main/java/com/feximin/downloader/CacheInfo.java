@@ -3,7 +3,7 @@ package com.feximin.downloader;
 /**
  * Created by Neo on 16/3/23.
  */
-public class BufferedInfo {
+public class CacheInfo {
     private String httpUrl;
     private String localFilePath;
     private int totalSize;
