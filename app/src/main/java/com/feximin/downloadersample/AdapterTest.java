@@ -79,7 +79,7 @@ public class AdapterTest extends BaseAdapter {
             int progress = pair.second;
             progressBar.setProgress(progress);
         }
-        if (status == null || status == WorkerRunnable.Status.None){
+        if (status == null){
             butDown.setText("下载");
         }else if (status == WorkerRunnable.Status.Pending){
             butDown.setText("等待中");
@@ -97,7 +97,6 @@ public class AdapterTest extends BaseAdapter {
             @Override
             public void onClick(View v) {
                 if (finalStatus == null
-                        || finalStatus == WorkerRunnable.Status.None
                         || finalStatus == WorkerRunnable.Status.Error
                         || finalStatus == WorkerRunnable.Status.Pause){
                     Downloader.getInstance().start(httpUrl, new DownloadListener(){
@@ -107,7 +106,7 @@ public class AdapterTest extends BaseAdapter {
                         }
 
                         @Override
-                        public void onProgress(String peanut, final int percent) {
+                        public void onProgress(String peanut, final int percent, int current, int total) {
                             notifyOnUiThread();
                         }
 

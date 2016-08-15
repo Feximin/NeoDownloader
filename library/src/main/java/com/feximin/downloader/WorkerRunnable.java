@@ -6,8 +6,6 @@ import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by Neo on 16/3/22.
@@ -25,44 +23,37 @@ public class WorkerRunnable {
     private CacheInfo mCacheInfo;
 
     private DownloaderConfig mConfig;
-    private List<DownloadListener> mDownloadListenerList = new ArrayList<>(1);
 
     private int mCurProgress;                //当前下载进度的百分比
 
     public WorkerRunnable(String url, DownloaderConfig config){
         this.mHttpUrl = url;
         this.mConfig = config;
-        this.mPeanut = config.producer.produce(url);
         this.mCacheInfo = config.checker.checkOut(url);
-    }
-
-    public WorkerRunnable transform(){
-        WorkerRunnable runnable = new WorkerRunnable(mHttpUrl, mConfig);
-        for (DownloadListener listener : mDownloadListenerList){
-            runnable.addDownloadListener(listener);
+        if (mCacheInfo != null){
+            this.mPeanut = new Peanut(url);
+            this.mPeanut.setTotalSize(mCacheInfo.getTotalSize());
+            File file = new File(mCacheInfo.getLocalFilePath());
+            this.mPeanut.setCurSize((int) file.length());
+            if (mPeanut.getCurPercent() == 100) {
+                mPeanut.setCurStatus(WorkerRunnable.Status.Finish);
+            }else{
+                mPeanut.setCurStatus(WorkerRunnable.Status.Pause);
+            }
+            this.mPeanut.setDestFile(mCacheInfo.getLocalFilePath());
         }
-        return runnable;
+        if (this.mPeanut == null) {
+            this.mPeanut = config.producer.produce(url);
+        }
     }
 
-    public void addDownloadListener(DownloadListener listener){
-        if (listener == null) return;
-        removeDownloadListener(listener);
-        mDownloadListenerList.add(listener);
-    }
-
-    public void removeDownloadListener(DownloadListener listener){
-        mDownloadListenerList.remove(listener);
-    }
     public void pause(){
-        if (mCurStatus == Status.Pause) return;
+//        if (mCurStatus == Status.Pause) return;
         mCurStatus = Status.Pause;
-        for (DownloadListener listener : mDownloadListenerList) {
+        mPeanut.setCurStatus(mCurStatus);
+        for (DownloadListener listener : Downloader.getInstance().mDownloadListenerSet) {
             listener.onPause(mHttpUrl);
         }
-    }
-
-    public Status getCurStatus(){
-        return mCurStatus;
     }
 
     public Peanut getPeanut(){
@@ -70,50 +61,50 @@ public class WorkerRunnable {
     }
 
     private Runnable mRunnable;
-    public Runnable run() {
-        if (mRunnable == null){
-            this.mCurStatus = Status.Pending;
-            mRunnable = new BusinessRunnable();
-            for (DownloadListener listener : mDownloadListenerList) {
-                listener.onPending(mHttpUrl);
-            }
+    public Runnable generateIfNull() {
+        if (mRunnable == null) mRunnable = new BusinessRunnable();
+        this.mCurStatus = Status.Pending;
+        mPeanut.setCurStatus(mCurStatus);
+        for (DownloadListener listener : Downloader.getInstance().mDownloadListenerSet) {
+            listener.onPending(mHttpUrl);
         }
+
         return mRunnable;
     }
 
-    private void onProgress(int cur, int total){
-        int percent = (int) (cur / (float)total * 100);
-        onProgress(percent);
+    public Runnable getRunnable(){
+        return mRunnable;
     }
 
-    private void  onProgress(int percent){
+
+    private void  onProgress(int cur, int total){
+        int percent = (int) (cur / (float)total * 100);
+        mPeanut.setCurSize(cur);
+        mPeanut.setTotalSize(total);
         if (mCurProgress != percent) {
             mCurProgress = percent;
-            if (mCurProgress == 100) mCurStatus = Status.Finish;
-            for (DownloadListener listener : mDownloadListenerList) {
-                listener.onProgress(mHttpUrl, mCurProgress);
-            }
             if (mCurProgress == 100){
-                mDownloadListenerList.clear();
+                mCurStatus = Status.Finish;
+                mPeanut.setCurStatus(mCurStatus);
+            }
+            for (DownloadListener listener : Downloader.getInstance().mDownloadListenerSet) {
+                listener.onProgress(mHttpUrl, mCurProgress, cur, total);
             }
         }
-    }
-
-    public int getProgress(){
-        return mCurProgress;
     }
 
     private void onError(String errorInfo){
         mCurStatus = Status.Error;
-        for (DownloadListener listener: mDownloadListenerList){
+        mPeanut.setCurStatus(mCurStatus);
+        for (DownloadListener listener: Downloader.getInstance().mDownloadListenerSet){
             listener.onError(mHttpUrl, errorInfo);
         }
-        mDownloadListenerList.clear();
     }
 
     private void onStart(){
         mCurStatus = Status.Running;
-        for (DownloadListener listener : mDownloadListenerList){
+        mPeanut.setCurStatus(mCurStatus);
+        for (DownloadListener listener : Downloader.getInstance().mDownloadListenerSet){
             listener.onStart(mHttpUrl);
         }
     }
@@ -133,6 +124,11 @@ public class WorkerRunnable {
                 URL url = new URL(mHttpUrl);
                 connection = (HttpURLConnection) url.openConnection();      //getContentLength是一个比较费时的操作n();
                 connection.setConnectTimeout(5000);
+//                connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.11; rv:47.0) Gecko/20100101 Firefox/47.0");
+//                connection.setRequestProperty("Connection", "keep-alive");
+//                connection.setRequestProperty("Accept-Encoding", "identity");
+//                connection.setRequestProperty("Accept-Language", "zh-CN,zh;q=0.8,en-US;q=0.5,en;q=0.3");
+                connection.connect();
                 int latestFileSize = connection.getContentLength();         //获取到最新的文件的长度
                 if (latestFileSize <= 0){
                     onError("invalid content length !!");
@@ -151,7 +147,7 @@ public class WorkerRunnable {
                                 mPeanut.setDestFile(path);
                                 startPosition = file.length();
                                 if (startPosition == latestFileSize){           //如果已经下载完了
-                                    onProgress(100);
+                                    onProgress((int) startPosition, latestFileSize);
                                     return;
                                 }else if (startPosition > 0 && startPosition < latestFileSize){      //
                                     randomAccessFile = new RandomAccessFile(file, "rwd");
@@ -171,17 +167,17 @@ public class WorkerRunnable {
                     connection.setConnectTimeout(5000);
                     connection.setRequestProperty("Range", "bytes="+startPosition + "-");
                 }
-                if (mCacheInfo == null) mCacheInfo = new CacheInfo();
-                mCacheInfo.setTotalSize(latestFileSize);
-                mCacheInfo.setLocalFilePath(mPeanut.getDestFile());
-                mCacheInfo.setHttpUrl(mHttpUrl);
-                mConfig.checker.cache(mCacheInfo);
 
                 is = connection.getInputStream();
                 if (is == null){
                     onError("can not open input stream !!");
                     return;
                 }
+                if (mCacheInfo == null) mCacheInfo = new CacheInfo();
+                mCacheInfo.setTotalSize(latestFileSize);
+                mCacheInfo.setLocalFilePath(mPeanut.getDestFile());
+                mCacheInfo.setHttpUrl(mHttpUrl);
+                mConfig.checker.cache(mCacheInfo);
                 byte[] buffer = new byte[4096];
 
                 int length;
@@ -200,7 +196,7 @@ public class WorkerRunnable {
                     }
                 }
                 if (completeSize == latestFileSize){
-                    onProgress(100);
+                    onProgress((int) completeSize, latestFileSize);
                 }else{
                     onError("unknown error");
                 }

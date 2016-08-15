@@ -7,8 +7,9 @@ public class Peanut {
 
     public String url;
     private int totalSize;
-    private int curPercent;
     private String destFile;        //
+    private int curSize;
+    private WorkerRunnable.Status curStatus;
 
     public Peanut(String url) {
         this.url = url;
@@ -20,17 +21,11 @@ public class Peanut {
     public int getTotalSize(){
         return totalSize;
     }
-    public int getCurPencent(){
-        return curPercent;
+    public int getCurPercent(){
+        int percent = (int) ((float)curSize/(float)totalSize * 100) ;
+        return percent;
     }
 
-    public int getCurPercent() {
-        return curPercent;
-    }
-
-    public void setCurPercent(int curPercent) {
-        this.curPercent = curPercent;
-    }
 
     public String getDestFile() {
         return destFile;
@@ -46,6 +41,22 @@ public class Peanut {
 
     public void setUrl(String url) {
         this.url = url;
+    }
+
+    public int getCurSize() {
+        return curSize;
+    }
+
+    public void setCurSize(int curSize) {
+        this.curSize = curSize;
+    }
+
+    public WorkerRunnable.Status getCurStatus() {
+        return curStatus;
+    }
+
+    public void setCurStatus(WorkerRunnable.Status curStatus) {
+        this.curStatus = curStatus;
     }
 
     @Override

@@ -5,7 +5,7 @@ package com.feximin.downloader;
  */
 public interface DownloadListener {
     void onStart(String peanut);
-    void onProgress(String peanut, int percent);
+    void onProgress(String peanut, int percent, int cur, int total);
     void onPause(String peanut);
     void onError(String url, String error);
     void onPending(String peanut);

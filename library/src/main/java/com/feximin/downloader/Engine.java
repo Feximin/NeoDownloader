@@ -1,7 +1,6 @@
 package com.feximin.downloader;
 
 import android.text.TextUtils;
-import android.util.Pair;
 
 import java.io.File;
 import java.util.HashMap;
@@ -19,31 +18,26 @@ public class Engine {
     private ArrayBlockingQueue<Runnable> mQueue;
     private Map<String, WorkerRunnable> mWorkerRunnableMap;
 
-    private QueueFullHandler mHandler;                  //任务队列如果已经满了，则抛出异常
-
-    private DownloadListener mDefaultListener = new SimpleDownloadListener();
-
-    public Engine(DownloaderConfig config){
+    Engine(DownloaderConfig config){
         this.mConfig = config;
-        this.mHandler = new QueueFullHandler();
         this.mWorkerRunnableMap = new HashMap<>();
         this.mQueue = new ArrayBlockingQueue<>(mConfig.maxQueueCount);
+        QueueFullHandler mHandler = new QueueFullHandler();   //任务队列如果已经满了，则抛出异常
         this.mExecutor = new ThreadPoolExecutor(mConfig.maxThread, mConfig.maxThread, 30, TimeUnit.SECONDS, mQueue, mHandler);
     }
 
     //如果不存在就添加，如果已经存在就只添加listener
-    public void start(String url, DownloadListener listener){
-        if (listener == null) listener = mDefaultListener;
+    public void start(String url  ){
         if (TextUtils.isEmpty(url)) {
-            listener.onError(url, "url is empty");
+            error(url, "url is empty");
         }else {
             WorkerRunnable workerRunnable = mWorkerRunnableMap.get(url);
             if (workerRunnable != null){
-                WorkerRunnable.Status status = workerRunnable.getCurStatus();
+                WorkerRunnable.Status status = workerRunnable.getPeanut().getCurStatus();
                 //如果是Error， Pause，Finish 的话需要重新进入队列
                 if (status == WorkerRunnable.Status.Pending || status == WorkerRunnable.Status.Running){
                     //第二次添加的时候，如果还是默认的listener就不add了
-                    workerRunnable.addDownloadListener(listener);
+//                    workerRunnable.addDownloadListener(listener);
                     return;
                 }
             }
@@ -52,28 +46,53 @@ public class Engine {
                 if (workerRunnable == null) {
                     workerRunnable = new WorkerRunnable(url, mConfig);
                 }else{
-                    workerRunnable = workerRunnable.transform();
+//                    workerRunnable = workerRunnable.transform();
                 }
-                workerRunnable.addDownloadListener(listener);
+//                workerRunnable.addDownloadListener(listener);
+
                 mWorkerRunnableMap.put(url, workerRunnable);
                 try {
-                    mExecutor.execute(workerRunnable.run());
+                    mExecutor.execute(workerRunnable.generateIfNull());
                 }catch (QueueFullException e){
-                    listener.onError(url, "the queue is full");
+                    error(url, "the queue is full");
                 }
             } else {                             //表示队列已满
-                listener.onError(url, "the queue is full");
+                error(url, "the queue is full");
             }
         }
     }
 
+    private void error(String url, String info){
+        for (DownloadListener listener : Downloader.getInstance().mDownloadListenerSet){
+            listener.onError(url, info);
+        }
+    }
 
     public void pause(String url){
         if (TextUtils.isEmpty(url)) return;
         WorkerRunnable workerRunnable = mWorkerRunnableMap.get(url);
-        if (workerRunnable == null) return;
-        workerRunnable.pause();
-        mExecutor.remove(workerRunnable.run());
+        pause(workerRunnable);
+    }
+
+    private void pause(WorkerRunnable runnable){
+        if (runnable == null) return;
+        runnable.pause();
+        Runnable realRunnable = runnable.getRunnable();
+        if (realRunnable != null) {
+            mExecutor.remove(realRunnable);
+        }
+
+    }
+
+    public void pauseAll(){
+        for (Map.Entry<String, WorkerRunnable> entry : mWorkerRunnableMap.entrySet()){
+            pause(entry.getValue());
+        }
+    }
+
+    public void clear(){
+        pauseAll();
+        mWorkerRunnableMap.clear();
     }
 
 
@@ -92,14 +111,9 @@ public class Engine {
         }
     }
 
-    public Pair<WorkerRunnable.Status, Integer> getStatus(String url){
-        WorkerRunnable workerRunnable = mWorkerRunnableMap.get(url);
-        if (workerRunnable != null){
-            WorkerRunnable.Status status = workerRunnable.getCurStatus();
-            int progress = workerRunnable.getProgress();
-            return new Pair<>(status, progress);
-        }
-        return  null;
+
+    public WorkerRunnable getWorkerRunnable(String url){
+        return mWorkerRunnableMap.get(url);
     }
 
 }
